@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reservation Sniper</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1f; --muted:#6e6e73; --line:#e2e0da; --accent:#c8102e; --ok:#1a7f37; --warn:#b35c00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161617; --card:#232325; --ink:#f2f2f2; --muted:#a1a1a6; --line:#3a3a3c; --accent:#ff4d5e; --ok:#3fb950; --warn:#f0a040; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 22px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; }
+  h2 { font-size:15px; margin:0 0 12px; display:flex; gap:10px; align-items:center; }
+  h2 .n { width:24px; height:24px; border-radius:50%; background:var(--ink); color:var(--card); display:inline-grid; place-items:center; font-size:13px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input[type=text], input[type=email], input[type=tel], input[type=date], input[type=number], input[type=datetime-local], input[type=url] {
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px; font:inherit; background:var(--bg); color:var(--ink); }
+  .row { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0 12px; }
+  .inline { display:flex; gap:8px; }
+  .inline input { flex:1; }
+  button { font:inherit; font-weight:600; border:0; border-radius:9px; padding:10px 16px; cursor:pointer; background:var(--line); color:var(--ink); }
+  button.primary { background:var(--accent); color:#fff; }
+  button:disabled { opacity:.45; cursor:default; }
+  .check { display:flex; gap:8px; align-items:center; margin-top:12px; color:var(--ink); font-size:14px; }
+  .hint { color:var(--muted); font-size:13px; margin:6px 0 0; }
+  .found { color:var(--ok); font-size:13px; margin-top:6px; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; }
+  #status { font-weight:600; margin:0 0 10px; }
+  #status.busy { color:var(--warn); }
+  #log { background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:10px; height:220px; overflow:auto; font:12px/1.5 ui-monospace, Menlo, monospace; white-space:pre-wrap; }
+  #log .good { color:var(--ok); font-weight:700; }
+  #log .bad { color:var(--accent); }
+  #err { color:var(--accent); font-size:13px; min-height:18px; margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Reservation Sniper</h1>
+  <p class="sub">Books an OpenTable table the second it's released. Your settings save automatically.</p>
+
+  <section>
+    <h2><span class="n">1</span>Log in to OpenTable</h2>
+    <button id="login">Open Chrome to log in</button>
+    <p class="hint">Only needed the first time, or if the bot says you're logged out. Log in, then close that Chrome window.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>Restaurant</h2>
+    <label for="url">Paste the restaurant's OpenTable link</label>
+    <div class="inline"><input id="url" type="url" placeholder="https://www.opentable.com/r/..."><button id="find">Look up</button></div>
+    <div id="found" class="found"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Reservation</h2>
+    <div class="row">
+      <div><label for="date">Date</label><input id="date" type="date"></div>
+      <div><label for="partySize">Party size</label><input id="partySize" type="number" min="1" max="20" value="2"></div>
+    </div>
+    <label for="times">Times you'd take, best first</label>
+    <input id="times" type="text" placeholder="7pm, 7:30pm, 6:45pm, 8pm">
+    <p class="hint">OpenTable times are every 15 minutes (7:00, 7:15, 7:30...).</p>
+    <label class="check"><input id="card" type="checkbox"> This restaurant asks for a credit card to book (uses the card saved on your OpenTable account)</label>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>When tables are released</h2>
+    <label for="drop">Release date and time (your Mac's time zone)</label>
+    <input id="drop" type="datetime-local">
+    <p class="hint">Skip this if tables are already open and you just want to book now.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>Your details</h2>
+    <div class="row">
+      <div><label for="firstName">First name</label><input id="firstName" type="text" autocomplete="given-name"></div>
+      <div><label for="lastName">Last name</label><input id="lastName" type="text" autocomplete="family-name"></div>
+    </div>
+    <div class="row">
+      <div><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+      <div><label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" placeholder="2125551234"></div>
+    </div>
+    <p class="hint">As on your OpenTable account. Saved only on this Mac.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">6</span>Go</h2>
+    <div class="actions">
+      <button id="test">Test (won't book)</button>
+      <button id="now">Book now</button>
+      <button id="schedule" class="primary">Start: wait for release</button>
+      <button id="stop">Stop</button>
+    </div>
+    <div id="err"></div>
+    <p class="hint">"Test" finds a table without booking it; try it on a date that has tables today. While it's waiting for the release, keep this window and Chrome open and your Mac awake and plugged in.</p>
+  </section>
+
+  <section>
+    <p id="status">Idle</p>
+    <div id="log"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let config = {};
+
+function parseTime(t) {
+  const m = t.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/);
+  if (!m) return null;
+  let h = Number(m[1]); const min = Number(m[2] ?? 0); const ap = m[3]?.[0];
+  if (ap === 'p' && h < 12) h += 12;
+  if (ap === 'a' && h === 12) h = 0;
+  if (!ap && h >= 1 && h <= 11) h += 12; // "7" means 7pm for dinner
+  if (h > 23 || min > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+function showTime(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}`;
+}
+function toLocalInput(iso) {
+  const d = new Date(iso); if (isNaN(d)) return '';
+  return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function fill(c) {
+  config = c;
+  $('url').value = c.restaurantUrl ?? '';
+  $('found').textContent = c.restaurantId ? `✓ Restaurant found (ID ${c.restaurantId})` : '';
+  $('date').value = c.date ?? '';
+  $('partySize').value = c.partySize ?? 2;
+  $('times').value = (c.preferredTimes ?? []).map(showTime).join(', ');
+  $('card').checked = !!c.creditCardRequired;
+  $('drop').value = c.dropTime ? toLocalInput(c.dropTime) : '';
+  const d = c.diner ?? {};
+  $('firstName').value = d.firstName ?? ''; $('lastName').value = d.lastName ?? '';
+  $('email').value = d.email ?? ''; $('phone').value = d.phoneNumber ?? '';
+}
+
+function collect() {
+  const raw = $('times').value.split(/[,;\n]+/).filter((s) => s.trim());
+  const times = raw.map(parseTime);
+  const bad = raw.filter((_, i) => !times[i]);
+  const off = times.filter((t) => t && Number(t.slice(3)) % 15);
+  return {
+    error: bad.length ? `Couldn't read these times: ${bad.join(', ')}` : off.length ? `Times must be on the quarter hour: ${off.map(showTime).join(', ')}` : '',
+    data: {
+      date: $('date').value,
+      partySize: Number($('partySize').value),
+      preferredTimes: times.filter(Boolean),
+      creditCardRequired: $('card').checked,
+      dropTime: $('drop').value ? new Date($('drop').value).toISOString() : null,
+      diner: { firstName: $('firstName').value.trim(), lastName: $('lastName').value.trim(), email: $('email').value.trim(),
+               phoneNumber: $('phone').value.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''), country: 'US' },
+      windowSeconds: config.windowSeconds ?? 20, pollIntervalMs: config.pollIntervalMs ?? 500,
+    },
+  };
+}
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+
+let saveTimer;
+async function save() {
+  const { error, data } = collect();
+  $('err').textContent = error;
+  if (error) return false;
+  config = (await api('/api/save', data)).config;
+  return true;
+}
+document.querySelectorAll('input:not(#url)').forEach((el) => el.addEventListener('input', () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }));
+
+async function act(fn) {
+  $('err').textContent = '';
+  try { await fn(); } catch (e) { $('err').textContent = e.message; }
+}
+$('login').onclick = () => act(() => api('/api/login', {}));
+$('find').onclick = () => act(async () => { $('found').textContent = 'Looking it up (a Chrome window will open briefly)...'; try { fill((await api('/api/find', { url: $('url').value })).config); } catch (e) { $('found').textContent = ''; throw e; } });
+for (const mode of ['test', 'now', 'schedule']) {
+  $(mode).onclick = () => act(async () => {
+    if (!(await save())) return;
+    if (mode === 'now' && !confirm('This makes a REAL booking right now. Continue?')) return;
+    await api('/api/run', { mode });
+  });
+}
+$('stop').onclick = () => act(() => api('/api/stop', {}));
+
+function addLine(line) {
+  const div = document.createElement('div');
+  div.textContent = line;
+  if (/BOOKED|TEST OK|Login saved|Found it/.test(line)) div.className = 'good';
+  if (/Error|failed|Could not|No matching/.test(line)) div.className = 'bad';
+  $('log').append(div); $('log').scrollTop = 1e9;
+}
+function setBusy(busy) {
+  $('status').textContent = busy ? `${busy}...` : 'Idle';
+  $('status').className = busy ? 'busy' : '';
+  for (const id of ['login', 'find', 'test', 'now', 'schedule']) $(id).disabled = !!busy;
+  $('stop').disabled = !busy;
+}
+
+api('/api/config').then(({ config, busy, history }) => { fill(config); history.forEach(addLine); setBusy(busy); });
+const events = new EventSource('/api/events');
+events.onmessage = (e) => { const m = JSON.parse(e.data); if (m.line) addLine(m.line); setBusy(m.busy); };
+events.onerror = () => { $('status').textContent = 'The app has stopped. Double-click "Reservation Sniper" on your Desktop to start it again.'; $('status').className = 'busy'; };
+</script>
+</body>
+</html>
