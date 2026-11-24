@@ -12,7 +12,9 @@ const { restaurantId, date, partySize, preferredTimes, diner } = config;
 if (!restaurantId || !date || !partySize || !preferredTimes?.length) {
   throw new Error('config.json needs restaurantId, date, partySize and preferredTimes.');
 }
-if (!dryRun && !(diner?.firstName && diner?.lastName && diner?.email && diner?.phoneNumber)) {
+let cardMode = Boolean(config.creditCardRequired);
+let leaveOpen = false;
+if (!dryRun && !cardMode && !(diner?.firstName && diner?.lastName && diner?.email && diner?.phoneNumber)) {
   throw new Error('config.json needs your name, email and phone number under "diner".');
 }
 
@@ -38,6 +40,10 @@ try {
   const result = await snipe();
   if (result) log(result);
   else log(`No matching table found within ${config.windowSeconds ?? 20} seconds.`);
+  if (leaveOpen) {
+    log('The Chrome window is left open so you can finish there. Close it when you are done.');
+    await new Promise((resolve) => context.on('close', resolve));
+  }
 } finally {
   await context.close();
 }
@@ -61,14 +67,37 @@ async function snipe() {
       }
       if (dryRun) return `DRY RUN: would book ${slot.time}. Available: ${[...new Set(slots.map((s) => s.time))].join(', ')}`;
 
-      log(`Found ${slot.time}, holding it...`);
-      try {
-        const slotLockId = await ot.lockSlot({ restaurantId, date, partySize, slot });
-        const res = await ot.makeReservation({ restaurantId, date, partySize, slot, slotLockId, diner });
-        if (res.success) return `BOOKED ${date} at ${slot.time}, party of ${partySize}. Confirmation #${res.confirmationNumber}.`;
-        log(`Booking was not confirmed: ${JSON.stringify(res).slice(0, 300)}`);
-      } catch (err) {
-        log(`Could not book ${slot.time}: ${err.message}`);
+      if (cardMode) {
+        log(`Found ${slot.time}, opening the booking page (card required)...`);
+        try {
+          const res = await ot.bookInBrowser({
+            restaurantId,
+            date,
+            partySize,
+            slot,
+            onNeedsHelp: () => log('\x07Could not press "Complete reservation" automatically. Finish the booking in the Chrome window now; the table is being held for you.'),
+          });
+          if (res.success) return `BOOKED ${date} at ${slot.time}, party of ${partySize}. Confirmation #${res.confirmationNumber}.`;
+          leaveOpen = true;
+          return `\x07Booking failed (HTTP ${res.status}): ${JSON.stringify(res.error ?? res).slice(0, 300)}. The table may still be held: try finishing in the Chrome window.`;
+        } catch (err) {
+          log(`Could not book ${slot.time}: ${err.message}`);
+        }
+      } else {
+        log(`Found ${slot.time}, holding it...`);
+        try {
+          const slotLockId = await ot.lockSlot({ restaurantId, date, partySize, slot });
+          const res = await ot.makeReservation({ restaurantId, date, partySize, slot, slotLockId, diner });
+          if (res.success) return `BOOKED ${date} at ${slot.time}, party of ${partySize}. Confirmation #${res.confirmationNumber}.`;
+          log(`Booking was not confirmed: ${JSON.stringify(res).slice(0, 300)}`);
+        } catch (err) {
+          log(`Could not book ${slot.time}: ${err.message}`);
+          if (/credit.?card/i.test(err.message)) {
+            log('This restaurant needs a credit card; switching to the booking page for the rest of this run.');
+            cardMode = true;
+            continue;
+          }
+        }
       }
       failed.add(slot.slotHash);
     } catch (err) {

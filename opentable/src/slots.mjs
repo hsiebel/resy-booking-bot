@@ -23,7 +23,8 @@ export function availableSlots(availabilityData, restaurantId, anchor) {
   const day = restaurant?.availabilityDays?.find((d) => d.dayOffset === 0);
   const base = toMinutes(anchor);
   return (day?.slots ?? [])
-    .filter((s) => s.isAvailable)
+    // "Experience" slots are prepaid/ticketed menus with a different checkout; only book regular tables.
+    .filter((s) => s.isAvailable && (s.type ?? 'Standard') === 'Standard')
     .map((s) => ({ ...s, time: toHHMM(base + s.timeOffsetMinutes) }));
 }
 

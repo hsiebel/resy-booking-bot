@@ -134,6 +134,70 @@ export class OpenTableSession {
     return lock.slotLock.slotLockId;
   }
 
+  // For restaurants that require a credit card. OpenTable turns the card into a one-time token inside
+  // its own payment form, so the bot can't book these through the API. Instead it opens the real
+  // booking page (which holds the table and uses the card saved on your account) and presses
+  // "Complete reservation" for you. Resolves with OpenTable's booking response.
+  async bookInBrowser({ restaurantId, date, partySize, slot, waitMs = 5 * 60_000, onNeedsHelp }) {
+    const params = new URLSearchParams({
+      availabilityToken: slot.slotAvailabilityToken,
+      correlationId: randomUUID(),
+      creditCardRequired: 'true',
+      dateTime: `${date}T${slot.time}:00`,
+      partySize: String(partySize),
+      points: String(slot.pointsValue ?? 0),
+      pointsType: slot.pointsType ?? 'Standard',
+      resoAttribute: 'unselected',
+      rid: String(restaurantId),
+      slotHash: slot.slotHash,
+      isModify: 'false',
+      isMandatory: 'false',
+      cfe: 'true',
+      st: 'Standard',
+      tableCategory: 'default',
+      diningAreaId: '1',
+    });
+    const lockResponse = this.page.waitForResponse((r) => r.url().includes('opname=BookDetailsStandardSlotLock'), {
+      timeout: 30_000,
+    });
+    const bookResponse = this.page.waitForResponse((r) => r.url().includes('/dapi/booking/make-reservation'), {
+      timeout: waitMs,
+    });
+    bookResponse.catch(() => {});
+    await this.page.goto(`${BASE}/booking/details?${params}`, { waitUntil: 'domcontentloaded' });
+
+    const lock = (await (await lockResponse).json())?.data?.lockSlot;
+    if (!lock?.success) throw new Error(`Slot hold refused: ${JSON.stringify(lock?.slotLockErrors)}`);
+
+    const submitted = await this.#pressComplete();
+    if (!submitted) onNeedsHelp?.();
+    const res = await bookResponse;
+    let json = null;
+    try {
+      json = await res.json();
+    } catch {}
+    return { status: res.status(), ...json };
+  }
+
+  async #pressComplete() {
+    const page = this.page;
+    const button = page.getByRole('button', { name: /complete reservation|confirm reservation|book now/i }).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15_000 });
+      // Tick the restaurant's required policy boxes (cancellation fee, terms), never marketing opt-ins.
+      for (const box of await page.getByRole('checkbox').all()) {
+        const label = (await box.evaluate((el) => el.closest('label')?.innerText ?? el.getAttribute('aria-label') ?? '')) || '';
+        if (/agree|accept|acknowledge|policy|terms|cancellation/i.test(label) && !/email|text|sms|news|offer|marketing/i.test(label)) {
+          if (!(await box.isChecked())) await box.check({ timeout: 2_000 }).catch(() => {});
+        }
+      }
+      await button.click({ timeout: 5_000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   makeReservation({ restaurantId, date, partySize, slot, slotLockId, diner }) {
     return this.#post('/dapi/booking/make-reservation', {
       additionalServiceFees: [],
