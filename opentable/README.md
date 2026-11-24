@@ -1,3 +1,18 @@
+# Reservation Sniper (OpenTable and DoorDash)
+
+**Easiest way:** on your Mac, open Terminal and paste
+`curl -fsSL https://raw.githubusercontent.com/hsiebel/resy-booking-bot/claude/resy-reservation-bot-qbI13/opentable/install.sh | bash`.
+That installs everything and puts a "Reservation Sniper" icon on your Desktop. Double-click it to open
+the app, paste a restaurant's OpenTable or DoorDash link, fill in the form and press Start.
+
+## DoorDash
+Paste the restaurant's page link from doordash.com. The bot watches the same availability data the page
+uses, and when one of your times appears it opens that time's checkout page and presses Reserve (DoorDash
+runs a "are you human" check on that page, so it has to be pressed in a real browser). It books with the
+name and phone on your DoorDash account. Log in to DoorDash once with the app's login button first.
+
+The rest of this file covers the OpenTable command-line tools.
+
 # OpenTable sniper
 
 Books an OpenTable reservation the moment tables are released. It drives your own Chrome

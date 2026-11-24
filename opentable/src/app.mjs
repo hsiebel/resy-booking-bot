@@ -3,7 +3,7 @@ import { exec } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { openBrowser } from './opentable.mjs';
-import { checkConfig, findRestaurantId, runSnipe } from './sniper.mjs';
+import { checkConfig, findRestaurantId, platformOf, runSnipe } from './sniper.mjs';
 
 const PORT = 4747;
 const CONFIG = new URL('../config.json', import.meta.url);
@@ -74,13 +74,21 @@ const routes = {
     return { config };
   },
   'POST /api/find': async (req) => {
-    const { url } = await readBody(req);
+    const url = String((await readBody(req)).url ?? '').trim();
+    const platform = platformOf(url);
+    if (!platform) throw new Error('Paste a link from opentable.com or doordash.com.');
+    if (platform === 'doordash') {
+      const config = { ...loadConfig(), platform, restaurantUrl: url, restaurantId: null };
+      saveConfig(config);
+      log('DoorDash restaurant saved.');
+      return { config };
+    }
     if (job) throw new Error(`Already busy: ${job.label}. Press Stop first.`);
     setJob({ label: 'Looking up the restaurant', abort: new AbortController() });
     try {
       log('Looking up the restaurant...');
-      const restaurantId = await findRestaurantId(url.trim());
-      const config = { ...loadConfig(), restaurantUrl: url.trim(), restaurantId };
+      const restaurantId = await findRestaurantId(url);
+      const config = { ...loadConfig(), platform, restaurantUrl: url, restaurantId };
       saveConfig(config);
       log(`Found it (restaurant ID ${restaurantId}).`);
       return { config };
@@ -92,8 +100,9 @@ const routes = {
     start('Logging in', async (signal) => {
       const { context, page } = await openBrowser();
       signal.addEventListener('abort', () => context.close().catch(() => {}));
-      await page.goto('https://www.opentable.com/');
-      log('Log in to OpenTable in the Chrome window, then close that window.');
+      const site = loadConfig().platform === 'doordash' ? 'https://www.doordash.com/' : 'https://www.opentable.com/';
+      await page.goto(site);
+      log(`Log in to ${site.includes('doordash') ? 'DoorDash' : 'OpenTable'} in the Chrome window, then close that window.`);
       await new Promise((resolve) => context.on('close', resolve));
       return 'Login saved.';
     });

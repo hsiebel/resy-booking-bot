@@ -1,8 +1,18 @@
 import { setTimeout as sleep } from 'node:timers/promises';
+import { DoorDashSession } from './doordash.mjs';
 import { OpenTableSession, openBrowser } from './opentable.mjs';
 import { anchorTimes, availableSlots, pickSlot } from './slots.mjs';
 
+export const platformOf = (url = '') =>
+  /^https:\/\/(www\.)?doordash\.com\//.test(url) ? 'doordash' : /^https:\/\/(www\.)?opentable\.com\//.test(url) ? 'opentable' : null;
+
 export function checkConfig(config, { dryRun = false } = {}) {
+  if (config.platform === 'doordash') {
+    if (!config.restaurantUrl || !config.date || !config.partySize || !config.preferredTimes?.length) {
+      throw new Error('Missing restaurant link, date, party size or times.');
+    }
+    return;
+  }
   const { restaurantId, date, partySize, preferredTimes, diner } = config;
   if (!restaurantId || !date || !partySize || !preferredTimes?.length) {
     throw new Error('Missing restaurant, date, party size or times.');
@@ -16,6 +26,7 @@ export function checkConfig(config, { dryRun = false } = {}) {
 // Abort `signal` to stop early. Resolves with a one-line result message.
 export async function runSnipe(config, { dryRun = false, now = false, log = console.log, signal } = {}) {
   checkConfig(config, { dryRun });
+  if (config.platform === 'doordash') return runDoorDash(config, { dryRun, now, log, signal });
   const { restaurantId, date, partySize, preferredTimes, diner } = config;
   const dropAt = now ? Date.now() : new Date(config.dropTime).getTime();
   if (Number.isNaN(dropAt)) throw new Error('The release time is not a valid date.');
@@ -138,5 +149,76 @@ export async function findRestaurantId(url) {
     return Number(ranked[0][0]);
   } finally {
     await context.close().catch(() => {});
+  }
+}
+
+async function runDoorDash(config, { dryRun, now, log, signal }) {
+  const { date, partySize, preferredTimes } = config;
+  const dropAt = now ? Date.now() : new Date(config.dropTime).getTime();
+  if (Number.isNaN(dropAt)) throw new Error('The release time is not a valid date.');
+  const { context, page } = await openBrowser();
+  const closeOnAbort = () => context.close().catch(() => {});
+  signal?.addEventListener('abort', closeOnAbort);
+  const wait = (ms) => sleep(Math.max(0, ms), undefined, { signal });
+  const dd = new DoorDashSession(page);
+  const target = { date, partySize, storeId: config.reservationStoreId };
+  let leaveOpen = false;
+
+  try {
+    await dd.load(config.restaurantUrl);
+    log(`Ready (DoorDash). ${date}, party of ${partySize}, times ${preferredTimes.join(', ')}.`);
+    const refreshAt = dropAt - 45_000;
+    if (Date.now() < refreshAt) {
+      log(`Waiting until ${new Date(dropAt).toLocaleString()}. Keep your Mac awake, online and plugged in.`);
+      await wait(refreshAt - Date.now());
+      await dd.load(config.restaurantUrl);
+    }
+    await wait(dropAt - Date.now());
+
+    const result = (await snipe()) ?? `No matching table found within ${config.windowSeconds ?? 20} seconds.`;
+    log(result);
+    if (leaveOpen) {
+      log('The Chrome window is left open so you can finish there. Close it when you are done.');
+      await new Promise((resolve) => context.on('close', resolve));
+    }
+    return result;
+  } catch (err) {
+    if (signal?.aborted) return 'Stopped.';
+    throw err;
+  } finally {
+    signal?.removeEventListener('abort', closeOnAbort);
+    await context.close().catch(() => {});
+  }
+
+  async function snipe() {
+    const deadline = dropAt + (config.windowSeconds ?? 20) * 1000;
+    const failed = new Set();
+    while (Date.now() < deadline) {
+      try {
+        const slots = await dd.slots(target);
+        const slot = preferredTimes.map((t) => slots.find((s) => s.time === t && !failed.has(s.seatingId))).find(Boolean);
+        if (!slot) {
+          await wait(config.pollIntervalMs ?? 500);
+          continue;
+        }
+        if (dryRun) return `TEST OK: would book ${slot.time}. Open times: ${[...new Set(slots.map((s) => s.time))].join(', ')}`;
+        log(`Found ${slot.time}, opening checkout...`);
+        const res = await dd.book(slot, {
+          onNeedsHelp: () => log('\x07Could not press Reserve automatically. Finish the booking in the Chrome window now.'),
+        });
+        if (res.reservation_id) return `BOOKED ${date} at ${slot.time}, party of ${partySize} on DoorDash. Reservation ${res.reservation_id}.`;
+        log(`Booking failed (HTTP ${res.status}): ${JSON.stringify(res).slice(0, 300)}`);
+        failed.add(slot.seatingId);
+        if (failed.size >= 3) {
+          leaveOpen = true;
+          return '\x07Booking failed three times. Try finishing in the Chrome window.';
+        }
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        log(`Error: ${err.message}`);
+        await wait(config.pollIntervalMs ?? 500);
+      }
+    }
+    return null;
   }
 }

@@ -39,18 +39,18 @@
 <body>
 <main>
   <h1>Reservation Sniper</h1>
-  <p class="sub">Books an OpenTable table the second it's released. Your settings save automatically.</p>
+  <p class="sub">Books an OpenTable or DoorDash table the second it's released. Your settings save automatically.</p>
 
   <section>
-    <h2><span class="n">1</span>Log in to OpenTable</h2>
+    <h2><span class="n">1</span>Log in</h2>
     <button id="login">Open Chrome to log in</button>
-    <p class="hint">Only needed the first time, or if the bot says you're logged out. Log in, then close that Chrome window.</p>
+    <p class="hint">Paste the restaurant link in step 2 first; this opens that site (OpenTable or DoorDash). Only needed the first time per site, or if the bot says you're logged out. Log in, then close that Chrome window.</p>
   </section>
 
   <section>
     <h2><span class="n">2</span>Restaurant</h2>
-    <label for="url">Paste the restaurant's OpenTable link</label>
-    <div class="inline"><input id="url" type="url" placeholder="https://www.opentable.com/r/..."><button id="find">Look up</button></div>
+    <label for="url">Paste the restaurant's OpenTable or DoorDash link</label>
+    <div class="inline"><input id="url" type="url" placeholder="https://www.opentable.com/r/... or https://www.doordash.com/..."><button id="find">Look up</button></div>
     <div id="found" class="found"></div>
   </section>
 
@@ -62,7 +62,7 @@
     </div>
     <label for="times">Times you'd take, best first</label>
     <input id="times" type="text" placeholder="7pm, 7:30pm, 6:45pm, 8pm">
-    <p class="hint">OpenTable times are every 15 minutes (7:00, 7:15, 7:30...).</p>
+    <p class="hint">Times are usually every 15 minutes (7:00, 7:15, 7:30...).</p>
     <label class="check"><input id="card" type="checkbox"> This restaurant asks for a credit card to book (uses the card saved on your OpenTable account)</label>
   </section>
 
@@ -83,7 +83,7 @@
       <div><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
       <div><label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" placeholder="2125551234"></div>
     </div>
-    <p class="hint">As on your OpenTable account. Saved only on this Mac.</p>
+    <p class="hint">As on your OpenTable account (DoorDash uses your account details automatically). Saved only on this Mac.</p>
   </section>
 
   <section>
@@ -129,7 +129,8 @@ function toLocalInput(iso) {
 function fill(c) {
   config = c;
   $('url').value = c.restaurantUrl ?? '';
-  $('found').textContent = c.restaurantId ? `✓ Restaurant found (ID ${c.restaurantId})` : '';
+  $('found').textContent = c.platform === 'doordash' && c.restaurantUrl ? '✓ DoorDash restaurant saved' : c.restaurantId ? `✓ OpenTable restaurant found (ID ${c.restaurantId})` : '';
+  $('card').closest('label').style.display = c.platform === 'doordash' ? 'none' : '';
   $('date').value = c.date ?? '';
   $('partySize').value = c.partySize ?? 2;
   $('times').value = (c.preferredTimes ?? []).map(showTime).join(', ');
@@ -182,7 +183,7 @@ async function act(fn) {
   try { await fn(); } catch (e) { $('err').textContent = e.message; }
 }
 $('login').onclick = () => act(() => api('/api/login', {}));
-$('find').onclick = () => act(async () => { $('found').textContent = 'Looking it up (a Chrome window will open briefly)...'; try { fill((await api('/api/find', { url: $('url').value })).config); } catch (e) { $('found').textContent = ''; throw e; } });
+$('find').onclick = () => act(async () => { $('found').textContent = /doordash/.test($('url').value) ? 'Saving...' : 'Looking it up (a Chrome window will open briefly)...'; try { fill((await api('/api/find', { url: $('url').value })).config); } catch (e) { $('found').textContent = ''; throw e; } });
 for (const mode of ['test', 'now', 'schedule']) {
   $(mode).onclick = () => act(async () => {
     if (!(await save())) return;
@@ -195,7 +196,7 @@ $('stop').onclick = () => act(() => api('/api/stop', {}));
 function addLine(line) {
   const div = document.createElement('div');
   div.textContent = line;
-  if (/BOOKED|TEST OK|Login saved|Found it/.test(line)) div.className = 'good';
+  if (/BOOKED|TEST OK|Login saved|Found it|restaurant saved/.test(line)) div.className = 'good';
   if (/Error|failed|Could not|No matching/.test(line)) div.className = 'bad';
   $('log').append(div); $('log').scrollTop = 1e9;
 }
