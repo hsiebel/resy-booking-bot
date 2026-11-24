@@ -1,0 +1,14 @@
+{
+  "name": "opentable-sniper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "login": "node src/login.mjs",
+    "find": "node src/find.mjs",
+    "snipe": "node src/snipe.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

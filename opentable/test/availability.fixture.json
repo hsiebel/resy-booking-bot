@@ -1,0 +1,182 @@
+{
+ "availability": [
+  {
+   "restaurantId": 212347,
+   "restaurantAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJzIjowLCJuIjowfQ",
+   "availabilityDays": [
+    {
+     "noTimesReasons": [],
+     "earlyCutoff": null,
+     "sameDayCutoff": null,
+     "dayOffset": 0,
+     "allowNextAvailable": true,
+     "topExperience": null,
+     "slots": [
+      {
+       "isAvailable": true,
+       "timeOffsetMinutes": -30,
+       "slotHash": "4059629620",
+       "pointsType": "Standard",
+       "pointsValue": 100,
+       "hasPrivateDiningAvailability": false,
+       "availableSpaceIds": [],
+       "experienceIds": [],
+       "slotAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJjIjoxMTk4MTYsInMiOjAsIm4iOjB9",
+       "attributes": [
+        "default"
+       ],
+       "isMandatory": false,
+       "isMandatoryBySeating": [
+        {
+         "tableCategory": "default",
+         "isMandatory": false,
+         "__typename": "IsMandatoryBySeating"
+        }
+       ],
+       "experiencesBySeating": [],
+       "redemptionTier": "DineAnywhere",
+       "type": "Standard",
+       "diningAreasBySeating": [
+        {
+         "inventoryAccessRuleMap": null,
+         "__typename": "SlotDiningArea"
+        }
+       ],
+       "__typename": "AvailableSlot"
+      },
+      {
+       "isAvailable": true,
+       "timeOffsetMinutes": -15,
+       "slotHash": "1623942646",
+       "pointsType": "Standard",
+       "pointsValue": 100,
+       "hasPrivateDiningAvailability": false,
+       "availableSpaceIds": [],
+       "experienceIds": [],
+       "slotAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJjIjoxMTk4MTYsInMiOjAsIm4iOjB9",
+       "attributes": [
+        "default"
+       ],
+       "isMandatory": false,
+       "isMandatoryBySeating": [
+        {
+         "tableCategory": "default",
+         "isMandatory": false,
+         "__typename": "IsMandatoryBySeating"
+        }
+       ],
+       "experiencesBySeating": [],
+       "redemptionTier": "DineAnywhere",
+       "type": "Standard",
+       "diningAreasBySeating": [
+        {
+         "inventoryAccessRuleMap": null,
+         "__typename": "SlotDiningArea"
+        }
+       ],
+       "__typename": "AvailableSlot"
+      },
+      {
+       "isAvailable": true,
+       "timeOffsetMinutes": 0,
+       "slotHash": "3722782500",
+       "pointsType": "Standard",
+       "pointsValue": 100,
+       "hasPrivateDiningAvailability": false,
+       "availableSpaceIds": [],
+       "experienceIds": [],
+       "slotAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJjIjoxMTk4MTYsInMiOjAsIm4iOjB9",
+       "attributes": [
+        "default"
+       ],
+       "isMandatory": false,
+       "isMandatoryBySeating": [
+        {
+         "tableCategory": "default",
+         "isMandatory": false,
+         "__typename": "IsMandatoryBySeating"
+        }
+       ],
+       "experiencesBySeating": [],
+       "redemptionTier": "DineAnywhere",
+       "type": "Standard",
+       "diningAreasBySeating": [
+        {
+         "inventoryAccessRuleMap": null,
+         "__typename": "SlotDiningArea"
+        }
+       ],
+       "__typename": "AvailableSlot"
+      },
+      {
+       "isAvailable": true,
+       "timeOffsetMinutes": 15,
+       "slotHash": "3581139384",
+       "pointsType": "Standard",
+       "pointsValue": 100,
+       "hasPrivateDiningAvailability": false,
+       "availableSpaceIds": [],
+       "experienceIds": [],
+       "slotAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJjIjoxMTk4MTYsInMiOjAsIm4iOjB9",
+       "attributes": [
+        "default"
+       ],
+       "isMandatory": false,
+       "isMandatoryBySeating": [
+        {
+         "tableCategory": "default",
+         "isMandatory": false,
+         "__typename": "IsMandatoryBySeating"
+        }
+       ],
+       "experiencesBySeating": [],
+       "redemptionTier": "DineAnywhere",
+       "type": "Standard",
+       "diningAreasBySeating": [
+        {
+         "inventoryAccessRuleMap": null,
+         "__typename": "SlotDiningArea"
+        }
+       ],
+       "__typename": "AvailableSlot"
+      },
+      {
+       "isAvailable": true,
+       "timeOffsetMinutes": 30,
+       "slotHash": "2071367530",
+       "pointsType": "Standard",
+       "pointsValue": 100,
+       "hasPrivateDiningAvailability": false,
+       "availableSpaceIds": [],
+       "experienceIds": [],
+       "slotAvailabilityToken": "eyJ2IjozLCJtIjoxLCJwIjowLCJjIjoxMTk4MTYsInMiOjAsIm4iOjB9",
+       "attributes": [
+        "default"
+       ],
+       "isMandatory": false,
+       "isMandatoryBySeating": [
+        {
+         "tableCategory": "default",
+         "isMandatory": false,
+         "__typename": "IsMandatoryBySeating"
+        }
+       ],
+       "experiencesBySeating": [],
+       "redemptionTier": "DineAnywhere",
+       "type": "Standard",
+       "diningAreasBySeating": [
+        {
+         "inventoryAccessRuleMap": null,
+         "__typename": "SlotDiningArea"
+        }
+       ],
+       "__typename": "AvailableSlot"
+      }
+     ],
+     "__typename": "AvailabilityDay"
+    }
+   ],
+   "__typename": "RestaurantAvailability"
+  }
+ ]
+}

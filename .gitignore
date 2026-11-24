@@ -21,3 +21,8 @@ project/target/
 .idea
 .scala_dependencies
 .worksheet
+# OpenTable sniper
+opentable/node_modules/
+opentable/.chrome-profile/
+opentable/config.json
+*.har
